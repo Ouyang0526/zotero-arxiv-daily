@@ -2,7 +2,8 @@ name: Send emails daily
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 1 * * *'
+    - cron: '0 0 * * *'
+    # 修改到UTC凌晨0点
 
 jobs:
   calculate-and-send:
