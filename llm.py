@@ -1,6 +1,7 @@
 from llama_cpp import Llama
 from openai import OpenAI
 from loguru import logger
+from time import sleep
 
 GLOBAL_LLM = None
 
@@ -21,8 +22,17 @@ class LLM:
 
     def generate(self, messages: list[dict]) -> str:
         if isinstance(self.llm, OpenAI):
-            response = self.llm.chat.completions.create(messages=messages,temperature=0,model=self.model)
-            return response.choices[0].message.content
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    response = self.llm.chat.completions.create(messages=messages, temperature=0, model=self.model)
+                    return response.choices[0].message.content
+                except Exception as e:
+                    logger.error(f"Attempt {attempt + 1} failed: {e}")
+                    if attempt == max_retries - 1:
+                        return "Error: Failed to generate response"
+                    sleep(5)
+            
         else:
             response = self.llm.create_chat_completion(messages=messages,temperature=0)
             return response["choices"][0]["message"]["content"]
