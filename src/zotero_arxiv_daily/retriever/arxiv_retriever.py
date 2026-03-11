@@ -8,7 +8,13 @@ import feedparser
 from urllib.request import urlretrieve
 from tqdm import tqdm
 import os
+import time
 from loguru import logger
+
+# arXiv API 要求：每 3 秒最多 1 次请求（https://info.arxiv.org/help/api/tou.html）
+ARXIV_DELAY_BETWEEN_REQUESTS = 3.0
+ARXIV_429_RETRY_DELAY = 60
+ARXIV_429_MAX_RETRIES = 5
 @register_retriever("arxiv")
 class ArxivRetriever(BaseRetriever):
     def __init__(self, config):
@@ -27,11 +33,23 @@ class ArxivRetriever(BaseRetriever):
         if self.config.executor.debug:
             all_paper_ids = all_paper_ids[:10]
 
-        # Get full information of each paper from arxiv api
+        # Get full information of each paper from arxiv api (rate limit: 1 request per 3 seconds)
         bar = tqdm(total=len(all_paper_ids))
-        for i in range(0,len(all_paper_ids),20):
-            search = arxiv.Search(id_list=all_paper_ids[i:i+20])
-            batch = list(client.results(search))
+        for i in range(0, len(all_paper_ids), 20):
+            if i > 0:
+                time.sleep(ARXIV_DELAY_BETWEEN_REQUESTS)
+            search = arxiv.Search(id_list=all_paper_ids[i : i + 20])
+            for attempt in range(ARXIV_429_MAX_RETRIES):
+                try:
+                    batch = list(client.results(search))
+                    break
+                except arxiv.HTTPError as e:
+                    if e.status_code == 429 and attempt < ARXIV_429_MAX_RETRIES - 1:
+                        wait = ARXIV_429_RETRY_DELAY * (attempt + 1)
+                        logger.warning(f"arXiv rate limit (429), waiting {wait}s before retry ({attempt + 1}/{ARXIV_429_MAX_RETRIES})")
+                        time.sleep(wait)
+                    else:
+                        raise
             bar.update(len(batch))
             raw_papers.extend(batch)
         bar.close()
