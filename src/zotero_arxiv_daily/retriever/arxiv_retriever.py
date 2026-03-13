@@ -39,17 +39,29 @@ class ArxivRetriever(BaseRetriever):
             if i > 0:
                 time.sleep(ARXIV_DELAY_BETWEEN_REQUESTS)
             search = arxiv.Search(id_list=all_paper_ids[i : i + 20])
+            batch: list[ArxivResult] | None = None
             for attempt in range(ARXIV_429_MAX_RETRIES):
                 try:
                     batch = list(client.results(search))
                     break
                 except arxiv.HTTPError as e:
-                    if e.status_code == 429 and attempt < ARXIV_429_MAX_RETRIES - 1:
+                    status = getattr(e, "status", getattr(e, "status_code", None))
+                    if status == 429 and attempt < ARXIV_429_MAX_RETRIES - 1:
                         wait = ARXIV_429_RETRY_DELAY * (attempt + 1)
-                        logger.warning(f"arXiv rate limit (429), waiting {wait}s before retry ({attempt + 1}/{ARXIV_429_MAX_RETRIES})")
+                        logger.warning(
+                            "arXiv rate limit ({}) on request_retry={}, waiting {}s before retry ({}/{}), url={}",
+                            status,
+                            getattr(e, "retry", "unknown"),
+                            wait,
+                            attempt + 1,
+                            ARXIV_429_MAX_RETRIES,
+                            getattr(e, "url", "unknown"),
+                        )
                         time.sleep(wait)
                     else:
                         raise
+            if batch is None:
+                raise RuntimeError("arXiv retrieval failed without returning results")
             bar.update(len(batch))
             raw_papers.extend(batch)
         bar.close()
