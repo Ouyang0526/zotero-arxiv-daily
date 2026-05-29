@@ -22,6 +22,9 @@ def papers() -> list[Paper]:
 def test_render_email(papers:list[Paper]):
     email_content = render_email(papers)
     assert email_content is not None
+    assert '<a href="https://arxiv.org/pdf/2512.04296" style="' in email_content
+    assert '<a href="https://arxiv.org/abs/2512.04296" style="' in email_content
+    assert email_content.index(">PDF</a>") < email_content.index(">ABS</a>")
 
 @pytest.mark.ci
 def test_send_email(config,papers:list[Paper]):

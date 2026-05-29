@@ -53,6 +53,8 @@ def get_empty_html():
   return block_template
 
 def get_block_html(title:str, authors:str, rate:str, tldr:str, pdf_url:str, affiliations:str=None):
+    abs_url = pdf_url.replace("/pdf/", "/abs/", 1)
+    button_style = "display: inline-block; text-decoration: none; font-size: 14px; font-weight: bold; color: #fff; background-color: #d9534f; padding: 8px 16px; border-radius: 4px;"
     block_template = """
     <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-family: Arial, sans-serif; border: 1px solid #ddd; border-radius: 8px; padding: 16px; background-color: #f9f9f9;">
     <tr>
@@ -80,12 +82,13 @@ def get_block_html(title:str, authors:str, rate:str, tldr:str, pdf_url:str, affi
 
     <tr>
         <td style="padding: 8px 0;">
-            <a href="{pdf_url}" style="display: inline-block; text-decoration: none; font-size: 14px; font-weight: bold; color: #fff; background-color: #d9534f; padding: 8px 16px; border-radius: 4px;">PDF</a>
+            <a href="{pdf_url}" style="{button_style}">PDF</a>
+            <a href="{abs_url}" style="{button_style}">ABS</a>
         </td>
     </tr>
 </table>
 """
-    return block_template.format(title=title, authors=authors,rate=rate, tldr=tldr, pdf_url=pdf_url, affiliations=affiliations)
+    return block_template.format(title=title, authors=authors,rate=rate, tldr=tldr, pdf_url=pdf_url, abs_url=abs_url, button_style=button_style, affiliations=affiliations)
 
 def get_stars(score:float):
     full_star = '<span class="full-star">⭐</span>'
